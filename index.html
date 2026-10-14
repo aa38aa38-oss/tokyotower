@@ -200,4 +200,1813 @@
             background: rgba(20, 30, 48, 0.75);
             border: 2px solid rgba(255, 255, 255, 0.4);
             color: #fff;
-            display:
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+            touch-action: manipulation;
+        }
+        .touch-btn:active, .touch-btn.pressed {
+            background: rgba(255, 85, 51, 0.7);
+            border-color: #ff6633;
+            transform: scale(0.92);
+        }
+
+        /* 左側十字虛擬方向鍵 */
+        #dpad-zone {
+            position: absolute;
+            left: 20px;
+            bottom: 26px;
+            width: 140px;
+            height: 140px;
+        }
+        .dpad-btn {
+            position: absolute;
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            font-size: 18px;
+        }
+        #btn-dpad-up    { top: 0; left: 48px; }
+        #btn-dpad-down  { bottom: 0; left: 48px; }
+        #btn-dpad-left  { top: 48px; left: 0; }
+        #btn-dpad-right { top: 48px; right: 0; }
+
+        /* 右側動作按鈕組 */
+        #action-btn-zone {
+            position: absolute;
+            right: 20px;
+            bottom: 26px;
+            width: 150px;
+            height: 150px;
+        }
+        #touch-jump {
+            position: absolute;
+            right: 48px;
+            bottom: 0;
+            width: 52px;
+            height: 52px;
+            font-size: 13px;
+            background: rgba(0, 150, 255, 0.65);
+            border-color: #33ddff;
+        }
+        #touch-descend {
+            position: absolute;
+            left: 0;
+            bottom: 10px;
+            width: 44px;
+            height: 44px;
+            font-size: 12px;
+            background: rgba(70, 80, 95, 0.75);
+        }
+        #touch-dash {
+            position: absolute;
+            right: 0;
+            bottom: 48px;
+            width: 44px;
+            height: 44px;
+            font-size: 12px;
+            background: rgba(255, 170, 0, 0.65);
+            border-color: #ffcc00;
+        }
+        #touch-slash {
+            position: absolute;
+            right: 48px;
+            top: 0;
+            width: 46px;
+            height: 46px;
+            font-size: 14px;
+            background: rgba(0, 230, 118, 0.65);
+            border-color: #00ff66;
+        }
+        #touch-fly-toggle {
+            position: absolute;
+            left: 6px;
+            top: 26px;
+            width: 42px;
+            height: 42px;
+            font-size: 16px;
+            background: rgba(155, 89, 182, 0.7);
+            border-color: #bb86fc;
+        }
+
+        /* 手機螢幕適配媒體查詢 */
+        @media (max-width: 768px) {
+            #mobile-controls {
+                display: block;
+            }
+            #toggle-panel-btn {
+                display: block;
+            }
+            #ui-panel {
+                top: 48px;
+                left: 10px;
+                right: 10px;
+                max-width: none;
+                display: none; /* 手機版預設收合，點擊右上/左上按鈕展開 */
+            }
+            #ui-panel.show {
+                display: block;
+            }
+            .control-list {
+                display: none; /* 手機版隱藏繁瑣的鍵盤按鍵說明 */
+            }
+            #hud-right {
+                top: 10px;
+                right: 10px;
+                padding: 6px 10px;
+                min-width: 130px;
+            }
+            .altitude-val {
+                font-size: 19px;
+            }
+            #traffic-signal-info {
+                display: none; /* 節省手機頂部空間 */
+            }
+            #action-bar {
+                bottom: auto;
+                top: 50px;
+                padding: 3px 12px;
+                font-size: 10px;
+            }
+            .status-pill {
+                font-size: 10px;
+            }
+            #cam-label {
+                display: none;
+            }
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+
+<div id="canvas-container"></div>
+
+<!-- 手機版選單切換按鈕 -->
+<button id="toggle-panel-btn">⚙️ 控制選單</button>
+
+<div id="ui-panel">
+    <h1>🐕 東京鐵塔 3D 城市與自由飛行</h1>
+    <div class="subtitle">柯基傑洛 (Corgi Zero) 噴射飛行器 & 芝公園都市景觀</div>
+    <ul class="control-list">
+        <li><span class="key key-fly">F</span> 啟動 / 關閉 <strong>噴射飛行器自由飛行模式</strong></li>
+        <li><span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span> / <span class="key">方向鍵</span> 角色移動 / 空中巡航</li>
+        <li><span class="key">Space</span> 地面跳躍（二段跳）/ <strong>飛行時垂直上升</strong></li>
+        <li><span class="key key-fly">C</span> 或 <span class="key key-fly">Ctrl</span> <strong>飛行模式下垂直下降</strong></li>
+        <li><span class="key">Shift</span> 噴射加速衝刺 (地面突進 / 空中渦輪推進)</li>
+        <li><span class="key">J</span> 或 <span class="key">Z</span> Z-Saber 雙光劍二連斬</li>
+        <li><span class="key">K</span> 或 <span class="key">X</span> 戰損倒地長嚎 / 恢復狀態</li>
+        <li><span class="key">滑鼠/單指拖曳</span> 360° 旋轉視角與探索</li>
+    </ul>
+    <div class="btn-group">
+        <button class="btn btn-fly" id="btn-fly-mode">🚀 飛行器模式：關閉 (F)</button>
+        <button class="btn active" id="btn-follow">鏡頭跟隨主角</button>
+    </div>
+    <div class="btn-group">
+        <button class="btn" id="btn-wireframe">結構工程線框</button>
+        <button class="btn" id="btn-daynight">日/夜城市燈光</button>
+    </div>
+    <div class="btn-group">
+        <button class="btn" onclick="teleportPlayer('street')">傳送：十字路口</button>
+        <button class="btn" onclick="teleportPlayer('park')">傳送：芝公園</button>
+        <button class="btn" onclick="teleportPlayer('mainDeck')">傳送：主展望台</button>
+        <button class="btn" onclick="teleportPlayer('topSpire')">傳送：333m塔頂</button>
+    </div>
+</div>
+
+<div id="hud-right">
+    <div style="font-size: 11px; color: #9cb3c9;">目前海拔高度 (換算333m)</div>
+    <div class="altitude-val" id="altitude-text">0.0 m</div>
+    <div class="zone-badge" id="zone-text">東京鐵塔廣場</div>
+    <div style="margin-top: 6px; font-size: 11px; color: #88ccff;" id="traffic-signal-info">
+        路口號誌：南北向綠燈
+    </div>
+</div>
+
+<div id="action-bar">
+    <div class="status-pill">裝備：<span id="jetpack-label">地面模式</span></div>
+    <div class="status-pill">狀態：<span id="state-label">待機</span></div>
+    <div class="status-pill">視角：<span id="cam-label">跟隨</span></div>
+</div>
+
+<!-- 行動端虛擬觸控搖桿與按鈕 -->
+<div id="mobile-controls">
+    <div id="dpad-zone">
+        <button class="touch-btn dpad-btn" id="btn-dpad-up">▲</button>
+        <button class="touch-btn dpad-btn" id="btn-dpad-down">▼</button>
+        <button class="touch-btn dpad-btn" id="btn-dpad-left">◀</button>
+        <button class="touch-btn dpad-btn" id="btn-dpad-right">▶</button>
+    </div>
+    <div id="action-btn-zone">
+        <button class="touch-btn" id="touch-jump">上升/跳</button>
+        <button class="touch-btn" id="touch-descend">下降</button>
+        <button class="touch-btn" id="touch-dash">衝刺</button>
+        <button class="touch-btn" id="touch-slash">斬擊</button>
+        <button class="touch-btn" id="touch-fly-toggle">🚀</button>
+    </div>
+</div>
+
+<script>
+// =========================================================
+// 1. 初始化 Three.js 場景、相機、渲染器與光影
+// =========================================================
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x060a14);
+scene.fog = new THREE.FogExp2(0x060a14, 0.0018);
+
+const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1400);
+camera.position.set(0, 14, 38);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+container.appendChild(renderer.domElement);
+
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.maxDistance = 380;
+controls.minDistance = 3.5;
+controls.target.set(0, 3, 18);
+
+// 燈光系統
+const ambientLight = new THREE.AmbientLight(0xc8dcff, 0.65);
+scene.add(ambientLight);
+
+const dirLight = new THREE.DirectionalLight(0xfff4e0, 1.15);
+dirLight.position.set(110, 180, 120);
+dirLight.castShadow = true;
+dirLight.shadow.mapSize.width = 1024;
+dirLight.shadow.mapSize.height = 1024;
+dirLight.shadow.camera.near = 10;
+dirLight.shadow.camera.far = 450;
+const shadowRange = 140;
+dirLight.shadow.camera.left = -shadowRange;
+dirLight.shadow.camera.right = shadowRange;
+dirLight.shadow.camera.top = shadowRange;
+dirLight.shadow.camera.bottom = -shadowRange;
+scene.add(dirLight);
+
+const towerLight1 = new THREE.PointLight(0xff6622, 1.4, 110);
+towerLight1.position.set(0, 28, 0);
+scene.add(towerLight1);
+
+const towerLight2 = new THREE.PointLight(0xff5511, 1.2, 110);
+towerLight2.position.set(0, 68, 0);
+scene.add(towerLight2);
+
+const collidablePlatforms = [];
+const towerTrussMaterials = [];
+const movingVehicles = [];
+const walkingPedestrians = [];
+const trafficLightControllers = [];
+const streetLampLights = [];
+let fountainParticles = null;
+
+function addPlatformBox(x, y, z, w, h, d, material, isVisible = true, parentGroup = scene) {
+    const geo = new THREE.BoxGeometry(w, h, d);
+    const mesh = new THREE.Mesh(geo, material);
+    mesh.position.set(x, y, z);
+    mesh.receiveShadow = true;
+    mesh.castShadow = true;
+    mesh.visible = isVisible;
+    parentGroup.add(mesh);
+
+    collidablePlatforms.push({
+        mesh,
+        minX: x - w / 2,
+        maxX: x + w / 2,
+        minZ: z - d / 2,
+        maxZ: z + d / 2,
+        topY: y + h / 2,
+        bottomY: y - h / 2
+    });
+    return mesh;
+}
+
+// =========================================================
+// 2. 建立東京鐵塔 3D 結構模型
+// =========================================================
+const towerGroup = new THREE.Group();
+scene.add(towerGroup);
+
+const matIntlOrange = new THREE.MeshStandardMaterial({ color: 0xff3b14, roughness: 0.35, metalness: 0.65 });
+const matPureWhite = new THREE.MeshStandardMaterial({ color: 0xf4f6f9, roughness: 0.35, metalness: 0.6 });
+const matDarkSteel = new THREE.MeshStandardMaterial({ color: 0x263242, roughness: 0.5, metalness: 0.8 });
+const matObsGlass = new THREE.MeshStandardMaterial({
+    color: 0x33bbff,
+    roughness: 0.1,
+    metalness: 0.9,
+    transparent: true,
+    opacity: 0.58,
+    emissive: 0x0a2e46
+});
+const matStepPlatform = new THREE.MeshStandardMaterial({
+    color: 0x00e676,
+    roughness: 0.3,
+    metalness: 0.5,
+    transparent: true,
+    opacity: 0.72,
+    emissive: 0x003319
+});
+
+towerTrussMaterials.push(matIntlOrange, matPureWhite, matDarkSteel, matObsGlass);
+
+function createStrut(p1, p2, radius, material, parent = towerGroup) {
+    const dir = new THREE.Vector3().subVectors(p2, p1);
+    const len = dir.length();
+    const geo = new THREE.CylinderGeometry(radius, radius, len, 6);
+    geo.translate(0, len / 2, 0);
+    geo.rotateX(Math.PI / 2);
+    const mesh = new THREE.Mesh(geo, material);
+    mesh.position.copy(p1);
+    mesh.lookAt(p2);
+    parent.add(mesh);
+    return mesh;
+}
+
+function getTowerHalfWidth(y) {
+    if (y <= 36) {
+        const t = y / 36;
+        return 18 * Math.pow(1 - t, 1.35) + 6.2 * t;
+    } else if (y <= 78) {
+        const t = (y - 36) / (78 - 36);
+        return 5.8 * (1 - t) + 2.3 * t;
+    } else {
+        const t = (y - 78) / (105 - 78);
+        return 1.5 * (1 - t) + 0.35 * t;
+    }
+}
+
+function buildTokyoTower3D() {
+    const corners = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
+    const baseSpread = getTowerHalfWidth(0);
+
+    corners.forEach(([cx, cz]) => {
+        addPlatformBox(cx * baseSpread, 1.0, cz * baseSpread, 4.8, 2.0, 4.8, matDarkSteel, true, towerGroup);
+    });
+
+    const matFootTownWall = new THREE.MeshStandardMaterial({ color: 0xd8dee9, roughness: 0.5 });
+    addPlatformBox(0, 3.6, 0, 22, 7.2, 22, matFootTownWall, true, towerGroup);
+    addPlatformBox(0, 7.5, 0, 23, 0.8, 23, matPureWhite, true, towerGroup);
+
+    const legLevels = [0, 4.5, 9, 13.5, 18];
+    for (let i = 0; i < legLevels.length - 1; i++) {
+        const y1 = legLevels[i];
+        const y2 = legLevels[i + 1];
+        const w1 = getTowerHalfWidth(y1);
+        const w2 = getTowerHalfWidth(y2);
+        const legHalf1 = 1.65 - i * 0.15;
+        const legHalf2 = 1.65 - (i + 1) * 0.15;
+        const mat = (i % 2 === 0) ? matIntlOrange : matPureWhite;
+
+        corners.forEach(([cx, cz]) => {
+            const c1x = cx * w1, c1z = cz * w1;
+            const c2x = cx * w2, c2z = cz * w2;
+            const subCorners = [[-1,-1], [1,-1], [1,1], [-1,1]];
+
+            const pBot = subCorners.map(([sx, sz]) => new THREE.Vector3(c1x + sx * legHalf1, y1, c1z + sz * legHalf1));
+            const pTop = subCorners.map(([sx, sz]) => new THREE.Vector3(c2x + sx * legHalf2, y2, c2z + sz * legHalf2));
+
+            for (let k = 0; k < 4; k++) {
+                const next = (k + 1) % 4;
+                createStrut(pBot[k], pTop[k], 0.22, mat);
+                createStrut(pTop[k], pTop[next], 0.12, mat);
+                createStrut(pBot[k], pTop[next], 0.09, mat);
+                createStrut(pBot[next], pTop[k], 0.09, mat);
+            }
+        });
+    }
+
+    const yArch = 18;
+    const wArch = getTowerHalfWidth(yArch);
+    for (let k = 0; k < 4; k++) {
+        const [cx1, cz1] = corners[k];
+        const [cx2, cz2] = corners[(k + 1) % 4];
+        createStrut(
+            new THREE.Vector3(cx1 * wArch, yArch, cz1 * wArch),
+            new THREE.Vector3(cx2 * wArch, yArch, cz2 * wArch),
+            0.28, matIntlOrange
+        );
+    }
+
+    const towerBands = [];
+    for (let y = 18; y < 78; y += 4.0) towerBands.push(y);
+    towerBands.push(78);
+
+    for (let i = 0; i < towerBands.length - 1; i++) {
+        const y1 = towerBands[i];
+        const y2 = towerBands[i + 1];
+        const w1 = getTowerHalfWidth(y1);
+        const w2 = getTowerHalfWidth(y2);
+        const bandIndex = Math.floor(y1 / 11);
+        const mat = (bandIndex % 2 === 0) ? matIntlOrange : matPureWhite;
+
+        const pBot = corners.map(([cx, cz]) => new THREE.Vector3(cx * w1, y1, cz * w1));
+        const pTop = corners.map(([cx, cz]) => new THREE.Vector3(cx * w2, y2, cz * w2));
+
+        for (let k = 0; k < 4; k++) {
+            const next = (k + 1) % 4;
+            createStrut(pBot[k], pTop[k], 0.25, mat);
+            createStrut(pTop[k], pTop[next], 0.16, mat);
+            const midBot = new THREE.Vector3().addVectors(pBot[k], pBot[next]).multiplyScalar(0.5);
+            const midTop = new THREE.Vector3().addVectors(pTop[k], pTop[next]).multiplyScalar(0.5);
+            createStrut(midBot, midTop, 0.1, mat);
+            createStrut(pBot[k], midTop, 0.11, mat);
+            createStrut(midBot, pTop[k], 0.11, mat);
+            createStrut(midBot, pTop[next], 0.11, mat);
+            createStrut(pBot[next], midTop, 0.11, mat);
+        }
+    }
+
+    // 150m 主展望台 Main Deck
+    addPlatformBox(0, 35.5, 0, 15.5, 1.0, 15.5, matPureWhite, true, towerGroup);
+    addPlatformBox(0, 37.2, 7.4, 15.8, 2.4, 0.6, matObsGlass, true, towerGroup);
+    addPlatformBox(0, 37.2, -7.4, 15.8, 2.4, 0.6, matObsGlass, true, towerGroup);
+    addPlatformBox(7.4, 37.2, 0, 0.6, 2.4, 15.8, matObsGlass, true, towerGroup);
+    addPlatformBox(-7.4, 37.2, 0, 0.6, 2.4, 15.8, matObsGlass, true, towerGroup);
+    addPlatformBox(0, 38.8, 5.8, 15.8, 0.7, 3.8, matIntlOrange, true, towerGroup);
+    addPlatformBox(0, 38.8, -5.8, 15.8, 0.7, 3.8, matIntlOrange, true, towerGroup);
+    addPlatformBox(5.8, 38.8, 0, 3.8, 0.7, 8.0, matIntlOrange, true, towerGroup);
+    addPlatformBox(-5.8, 38.8, 0, 3.8, 0.7, 8.0, matIntlOrange, true, towerGroup);
+
+    // 250m 頂部特別展望台 Top Deck
+    addPlatformBox(0, 71.5, 0, 8.2, 0.9, 8.2, matDarkSteel, true, towerGroup);
+    addPlatformBox(0, 73.0, 3.8, 8.4, 2.0, 0.5, matObsGlass, true, towerGroup);
+    addPlatformBox(0, 73.0, -3.8, 8.4, 2.0, 0.5, matObsGlass, true, towerGroup);
+    addPlatformBox(3.8, 73.0, 0, 0.5, 2.0, 8.4, matObsGlass, true, towerGroup);
+    addPlatformBox(-3.8, 73.0, 0, 0.5, 2.0, 8.4, matObsGlass, true, towerGroup);
+    addPlatformBox(0, 74.3, 0, 8.6, 0.6, 8.6, matIntlOrange, true, towerGroup);
+
+    // 頂端天線塔
+    for (let y = 78; y < 104; y += 3.25) {
+        const y2 = y + 3.25;
+        const w1 = getTowerHalfWidth(y);
+        const w2 = getTowerHalfWidth(y2);
+        const idx = Math.floor((y - 78) / 6.5);
+        const mat = (idx % 2 === 0) ? matIntlOrange : matPureWhite;
+
+        const pBot = corners.map(([cx, cz]) => new THREE.Vector3(cx * w1, y, cz * w1));
+        const pTop = corners.map(([cx, cz]) => new THREE.Vector3(cx * w2, y2, cz * w2));
+        for (let k = 0; k < 4; k++) {
+            const next = (k + 1) % 4;
+            createStrut(pBot[k], pTop[k], 0.14, mat);
+            createStrut(pTop[k], pTop[next], 0.1, mat);
+            createStrut(pBot[k], pTop[next], 0.08, mat);
+            createStrut(pBot[next], pTop[k], 0.08, mat);
+        }
+    }
+
+    addPlatformBox(0, 105.0, 0, 3.4, 0.5, 3.4, matPureWhite, true, towerGroup);
+    const beaconMesh = new THREE.Mesh(
+        new THREE.SphereGeometry(0.7, 16, 16),
+        new THREE.MeshBasicMaterial({ color: 0xff2200 })
+    );
+    beaconMesh.position.set(0, 106.5, 0);
+    towerGroup.add(beaconMesh);
+
+    for (let k = 0; k < 4; k++) {
+        const [cx, cz] = corners[k];
+        createStrut(
+            new THREE.Vector3(cx * 1.1, 7.5, cz * 1.1),
+            new THREE.Vector3(cx * 1.1, 72.0, cz * 1.1),
+            0.12, matDarkSteel
+        );
+    }
+
+    let angle = 0;
+    for (let y = 8.5; y < 103; y += 3.2) {
+        if (Math.abs(y - 35.5) < 1.8 || Math.abs(y - 71.5) < 1.8 || Math.abs(y - 74.3) < 1.6) {
+            angle += 0.85;
+            continue;
+        }
+        const maxR = Math.max(2.6, getTowerHalfWidth(y) * 0.72);
+        const px = Math.cos(angle) * maxR;
+        const pz = Math.sin(angle) * maxR;
+        const pSize = y < 75 ? 3.4 : 2.6;
+        addPlatformBox(px, y, pz, pSize, 0.45, pSize, matStepPlatform, true, towerGroup);
+        angle += 0.92;
+    }
+}
+
+// =========================================================
+// 3. 建立東京鐵塔周邊城市基礎建設
+// =========================================================
+const cityGroup = new THREE.Group();
+scene.add(cityGroup);
+
+function createBuildingWindowTexture(baseHex, windowHex) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = baseHex;
+    ctx.fillRect(0, 0, 128, 256);
+
+    for (let r = 0; r < 16; r++) {
+        for (let c = 0; c < 6; c++) {
+            const lit = Math.random() > 0.28;
+            ctx.fillStyle = lit ? windowHex : '#121a24';
+            ctx.fillRect(8 + c * 19, 8 + r * 15, 13, 9);
+        }
+    }
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+}
+
+function buildCityInfrastructure() {
+    const groundMat = new THREE.MeshStandardMaterial({ color: 0x161f2c, roughness: 0.9 });
+    addPlatformBox(0, -0.5, 0, 600, 1.0, 600, groundMat, true, cityGroup);
+
+    const plazaMat = new THREE.MeshStandardMaterial({ color: 0x3b4654, roughness: 0.75 });
+    addPlatformBox(0, 0.08, 0, 76, 0.16, 76, plazaMat, true, cityGroup);
+
+    const asphaltMat = new THREE.MeshStandardMaterial({ color: 0x1e242b, roughness: 0.85 });
+    const yellowLineMat = new THREE.MeshBasicMaterial({ color: 0xf1c40f });
+    const whiteLineMat = new THREE.MeshBasicMaterial({ color: 0xecf0f1 });
+
+    const roadCoords = [-48, 48];
+    roadCoords.forEach(rc => {
+        const roadEW = new THREE.Mesh(new THREE.BoxGeometry(520, 0.12, 16), asphaltMat);
+        roadEW.position.set(0, 0.06, rc);
+        roadEW.receiveShadow = true;
+        cityGroup.add(roadEW);
+
+        const roadNS = new THREE.Mesh(new THREE.BoxGeometry(16, 0.13, 520), asphaltMat);
+        roadNS.position.set(rc, 0.065, 0);
+        roadNS.receiveShadow = true;
+        cityGroup.add(roadNS);
+
+        for (let pos = -240; pos <= 240; pos += 12) {
+            if (Math.abs(pos - 48) < 10 || Math.abs(pos + 48) < 10) continue;
+            const dashEW = new THREE.Mesh(new THREE.BoxGeometry(5, 0.15, 0.25), yellowLineMat);
+            dashEW.position.set(pos, 0.08, rc);
+            const dashNS = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.15, 5), yellowLineMat);
+            dashNS.position.set(rc, 0.08, pos);
+            cityGroup.add(dashEW, dashNS);
+        }
+    });
+
+    const intersections = [[-48, -48], [48, -48], [48, 48], [-48, 48]];
+    intersections.forEach(([ix, iz]) => {
+        for (let s = -6; s <= 6; s += 1.6) {
+            const zStripeN = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.16, 3.2), whiteLineMat);
+            zStripeN.position.set(ix + s, 0.08, iz - 10.2);
+            const zStripeS = zStripeN.clone();
+            zStripeS.position.set(ix + s, 0.08, iz + 10.2);
+            const xStripeW = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.16, 0.8), whiteLineMat);
+            xStripeW.position.set(ix - 10.2, 0.08, iz + s);
+            const xStripeE = xStripeW.clone();
+            xStripeE.position.set(ix + 10.2, 0.08, iz + s);
+            cityGroup.add(zStripeN, zStripeS, xStripeW, xStripeE);
+        }
+
+        createTrafficLight(ix - 9.5, iz - 9.5, 0);
+        createTrafficLight(ix + 9.5, iz + 9.5, Math.PI);
+        createTrafficLight(ix + 9.5, iz - 9.5, -Math.PI / 2);
+        createTrafficLight(ix - 9.5, iz + 9.5, Math.PI / 2);
+    });
+
+    for (let pos = -160; pos <= 160; pos += 32) {
+        if (Math.abs(pos - 48) < 14 || Math.abs(pos + 48) < 14) continue;
+        createStreetLamp(pos, -38.5, 0);
+        createStreetLamp(pos, 38.5, Math.PI);
+        createStreetLamp(-38.5, pos, Math.PI / 2);
+        createStreetLamp(38.5, pos, -Math.PI / 2);
+    }
+
+    buildShibaParkZone(95, 0, 62, 76);
+    buildShibaParkZone(0, 95, 76, 62);
+
+    const buildingConfigs = [
+        { x: -95, z: -95, w: 26, d: 26, h: 68, base: '#1a2636', win: '#88ddff' },
+        { x: -95, z: -20, w: 24, d: 34, h: 52, base: '#242938', win: '#ffdd99' },
+        { x: -95, z: 22,  w: 24, d: 30, h: 82, base: '#182232', win: '#aaddff' },
+        { x: -95, z: 95,  w: 28, d: 28, h: 60, base: '#2b2638', win: '#ffd280' },
+        { x: -22, z: -98, w: 30, d: 26, h: 92, base: '#142030', win: '#77eeff' },
+        { x: 22,  z: -98, w: 28, d: 26, h: 74, base: '#222a3a', win: '#ffeeaa' },
+        { x: 95,  z: -95, w: 30, d: 28, h: 64, base: '#1f2833', win: '#99ccff' },
+        { x: 95,  z: 95,  w: 32, d: 30, h: 78, base: '#1d2738', win: '#ffddaa' },
+        { x: -155, z: -60, w: 32, d: 32, h: 110, base: '#121b28', win: '#66ccff' },
+        { x: -155, z: 50,  w: 30, d: 34, h: 88,  base: '#1e2430', win: '#ffcc88' },
+        { x: 155,  z: -45, w: 34, d: 30, h: 96,  base: '#16202e', win: '#88eeff' },
+        { x: 155,  z: 55,  w: 30, d: 30, h: 72,  base: '#202634', win: '#ffe4a0' },
+        { x: 0,    z: -155, w: 42, d: 28, h: 120, base: '#101824', win: '#55ddff' }
+    ];
+
+    buildingConfigs.forEach(b => {
+        const tex = createBuildingWindowTexture(b.base, b.win);
+        tex.repeat.set(Math.round(b.w / 8), Math.round(b.h / 12));
+        const bMat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.4, metalness: 0.3 });
+        addPlatformBox(b.x, b.h / 2, b.z, b.w, b.h, b.d, bMat, true, cityGroup);
+
+        const roofMat = new THREE.MeshStandardMaterial({ color: 0x2c3540, roughness: 0.7 });
+        addPlatformBox(b.x, b.h + 1.2, b.z, b.w * 0.45, 2.4, b.d * 0.45, roofMat, true, cityGroup);
+
+        const roofBeacon = new THREE.Mesh(
+            new THREE.SphereGeometry(0.45, 8, 8),
+            new THREE.MeshBasicMaterial({ color: 0xff2200 })
+        );
+        roofBeacon.position.set(b.x + b.w * 0.4, b.h + 1.2, b.z + b.d * 0.4);
+        cityGroup.add(roofBeacon);
+    });
+}
+
+function createTrafficLight(x, z, rotY) {
+    const group = new THREE.Group();
+    group.position.set(x, 0, z);
+    group.rotation.y = rotY;
+
+    const poleMat = new THREE.MeshStandardMaterial({ color: 0x34495e, metalness: 0.7, roughness: 0.3 });
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.18, 6.2, 8), poleMat);
+    pole.position.y = 3.1;
+    group.add(pole);
+
+    const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 3.8, 8), poleMat);
+    arm.rotation.z = Math.PI / 2;
+    arm.position.set(1.8, 5.8, 0);
+    group.add(arm);
+
+    const box = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.55, 0.55), new THREE.MeshStandardMaterial({ color: 0x111111 }));
+    box.position.set(2.4, 5.8, 0);
+    group.add(box);
+
+    const redMat = new THREE.MeshBasicMaterial({ color: 0x330000 });
+    const yellowMat = new THREE.MeshBasicMaterial({ color: 0x332200 });
+    const greenMat = new THREE.MeshBasicMaterial({ color: 0x003311 });
+
+    const lampGeo = new THREE.SphereGeometry(0.16, 10, 10);
+    const redLamp = new THREE.Mesh(lampGeo, redMat);
+    redLamp.position.set(1.95, 5.8, 0.26);
+    const yellowLamp = new THREE.Mesh(lampGeo, yellowMat);
+    yellowLamp.position.set(2.4, 5.8, 0.26);
+    const greenLamp = new THREE.Mesh(lampGeo, greenMat);
+    greenLamp.position.set(2.85, 5.8, 0.26);
+
+    group.add(redLamp, yellowLamp, greenLamp);
+    cityGroup.add(group);
+
+    const isNS = Math.abs(Math.cos(rotY)) > 0.5;
+    trafficLightControllers.push({ isNS, redMat, yellowMat, greenMat });
+}
+
+function createStreetLamp(x, z, rotY) {
+    const group = new THREE.Group();
+    group.position.set(x, 0, z);
+    group.rotation.y = rotY;
+
+    const poleMat = new THREE.MeshStandardMaterial({ color: 0x2c3e50, metalness: 0.8, roughness: 0.3 });
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.18, 7.5, 8), poleMat);
+    pole.position.y = 3.75;
+    group.add(pole);
+
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 2.2), poleMat);
+    arm.position.set(0, 7.4, -0.9);
+    group.add(arm);
+
+    const bulbMat = new THREE.MeshBasicMaterial({ color: 0xffe6aa });
+    const bulb = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.12, 0.7), bulbMat);
+    bulb.position.set(0, 7.32, -1.7);
+    group.add(bulb);
+
+    cityGroup.add(group);
+    streetLampLights.push(bulbMat);
+}
+
+function buildShibaParkZone(cx, cz, w, d) {
+    const grassMat = new THREE.MeshStandardMaterial({ color: 0x1e4d2b, roughness: 0.85 });
+    addPlatformBox(cx, 0.12, cz, w, 0.24, d, grassMat, true, cityGroup);
+
+    const pathMat = new THREE.MeshStandardMaterial({ color: 0x8c7f70, roughness: 0.8 });
+    const path1 = new THREE.Mesh(new THREE.BoxGeometry(w * 0.9, 0.26, 4.2), pathMat);
+    path1.position.set(cx, 0.13, cz);
+    const path2 = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.26, d * 0.9), pathMat);
+    path2.position.set(cx, 0.13, cz);
+    cityGroup.add(path1, path2);
+
+    if (cx > 50) {
+        const gateGroup = new THREE.Group();
+        gateGroup.position.set(cx - 12, 0.2, cz);
+        const vermilionMat = new THREE.MeshStandardMaterial({ color: 0xc0291b, roughness: 0.4 });
+        const roofDarkMat = new THREE.MeshStandardMaterial({ color: 0x1e242b, roughness: 0.6 });
+
+        for (let pz of [-6, -2, 2, 6]) {
+            for (let px of [-2.2, 2.2]) {
+                const col = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.42, 8.5, 10), vermilionMat);
+                col.position.set(px, 4.25, pz);
+                gateGroup.add(col);
+            }
+        }
+        addPlatformBox(cx - 12, 6.2, cz, 7.2, 0.9, 16.5, roofDarkMat, true, cityGroup);
+        addPlatformBox(cx - 12, 10.5, cz, 8.5, 1.4, 18.0, roofDarkMat, true, cityGroup);
+        cityGroup.add(gateGroup);
+    } else {
+        const basinMat = new THREE.MeshStandardMaterial({ color: 0x7f8c8d, roughness: 0.5 });
+        const waterMat = new THREE.MeshStandardMaterial({ color: 0x00a8ff, roughness: 0.1, metalness: 0.6 });
+        const basin = new THREE.Mesh(new THREE.CylinderGeometry(6.5, 6.8, 1.1, 24), basinMat);
+        basin.position.set(cx, 0.6, cz);
+        const water = new THREE.Mesh(new THREE.CylinderGeometry(5.9, 5.9, 0.9, 24), waterMat);
+        water.position.set(cx, 0.68, cz);
+        cityGroup.add(basin, water);
+
+        const pCount = 60;
+        const pGeo = new THREE.BufferGeometry();
+        const pPos = new Float32Array(pCount * 3);
+        for (let i = 0; i < pCount; i++) {
+            pPos[i * 3] = cx;
+            pPos[i * 3 + 1] = 1.2 + Math.random() * 4;
+            pPos[i * 3 + 2] = cz;
+        }
+        pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+        fountainParticles = {
+            mesh: new THREE.Points(pGeo, new THREE.PointsMaterial({ color: 0xaaeeff, size: 0.45, transparent: true, opacity: 0.8 })),
+            cx, cz
+        };
+        cityGroup.add(fountainParticles.mesh);
+    }
+
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5c4033, roughness: 0.9 });
+    const leafGreenMat = new THREE.MeshStandardMaterial({ color: 0x2ecc71, roughness: 0.7 });
+    const sakuraPinkMat = new THREE.MeshStandardMaterial({ color: 0xff9ff3, roughness: 0.7 });
+
+    for (let i = 0; i < 20; i++) {
+        const tx = cx + (Math.random() - 0.5) * (w - 8);
+        const tz = cz + (Math.random() - 0.5) * (d - 8);
+        if (Math.abs(tx - cx) < 8 && Math.abs(tz - cz) < 8) continue;
+
+        const tree = new THREE.Group();
+        tree.position.set(tx, 0.2, tz);
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.42, 2.8, 7), trunkMat);
+        trunk.position.y = 1.4;
+        tree.add(trunk);
+
+        const isSakura = Math.random() < 0.35;
+        const foliageMat = isSakura ? sakuraPinkMat : leafGreenMat;
+        const crown1 = new THREE.Mesh(new THREE.ConeGeometry(2.1, 3.6, 7), foliageMat);
+        crown1.position.y = 3.6;
+        const crown2 = new THREE.Mesh(new THREE.ConeGeometry(1.6, 2.8, 7), foliageMat);
+        crown2.position.y = 5.2;
+        tree.add(crown1, crown2);
+        cityGroup.add(tree);
+    }
+}
+
+// =========================================================
+// 4. 車流與行人動態
+// =========================================================
+function spawnCityTrafficAndPedestrians() {
+    const carColors = [0xe74c3c, 0x3498db, 0xf1c40f, 0x2ecc71, 0x9b59b6, 0xecf0f1, 0xe67e22];
+    const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8 });
+    const headLightMat = new THREE.MeshBasicMaterial({ color: 0xffffcc });
+    const tailLightMat = new THREE.MeshBasicMaterial({ color: 0xff1100 });
+
+    const roadTracks = [
+        { axis: 'x', fixedZ: -51.5, dir: 1,  speed: 18 },
+        { axis: 'x', fixedZ: -44.5, dir: -1, speed: 16 },
+        { axis: 'x', fixedZ: 44.5,  dir: 1,  speed: 17 },
+        { axis: 'x', fixedZ: 51.5,  dir: -1, speed: 19 },
+        { axis: 'z', fixedX: -51.5, dir: -1, speed: 16 },
+        { axis: 'z', fixedX: -44.5, dir: 1,  speed: 18 },
+        { axis: 'z', fixedX: 44.5,  dir: -1, speed: 17 },
+        { axis: 'z', fixedX: 51.5,  dir: 1,  speed: 15 }
+    ];
+
+    roadTracks.forEach((track) => {
+        for (let k = 0; k < 3; k++) {
+            const isBus = (k === 0);
+            const carGroup = new THREE.Group();
+            const color = carColors[Math.floor(Math.random() * carColors.length)];
+            const bodyMat = new THREE.MeshStandardMaterial({ color, roughness: 0.3, metalness: 0.5 });
+            const cabinMat = new THREE.MeshStandardMaterial({ color: 0x1e272e, roughness: 0.2 });
+
+            const length = isBus ? 7.2 : 3.8;
+            const height = isBus ? 2.4 : 1.1;
+            const width = isBus ? 2.3 : 1.85;
+
+            const chassis = new THREE.Mesh(new THREE.BoxGeometry(width, height, length), bodyMat);
+            chassis.position.y = height / 2 + 0.35;
+            chassis.castShadow = true;
+            carGroup.add(chassis);
+
+            if (!isBus) {
+                const cabin = new THREE.Mesh(new THREE.BoxGeometry(width * 0.86, 0.85, length * 0.55), cabinMat);
+                cabin.position.set(0, height + 0.65, -0.2);
+                carGroup.add(cabin);
+            }
+
+            for (let sx of [-width * 0.35, width * 0.35]) {
+                const hl = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.22, 0.1), headLightMat);
+                hl.position.set(sx, 0.8, length / 2 + 0.02);
+                const tl = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.22, 0.1), tailLightMat);
+                tl.position.set(sx, 0.8, -length / 2 - 0.02);
+                carGroup.add(hl, tl);
+            }
+
+            for (let wx of [-width / 2, width / 2]) {
+                for (let wz of [-length * 0.32, length * 0.32]) {
+                    const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.38, 0.26, 8), wheelMat);
+                    wheel.rotation.z = Math.PI / 2;
+                    wheel.position.set(wx, 0.38, wz);
+                    carGroup.add(wheel);
+                }
+            }
+
+            const startOffset = -180 + k * 120 + (Math.random() * 20);
+            if (track.axis === 'x') {
+                carGroup.position.set(startOffset, 0.1, track.fixedZ);
+                carGroup.rotation.y = track.dir > 0 ? Math.PI / 2 : -Math.PI / 2;
+            } else {
+                carGroup.position.set(track.fixedX, 0.1, startOffset);
+                carGroup.rotation.y = track.dir > 0 ? 0 : Math.PI;
+            }
+
+            cityGroup.add(carGroup);
+            movingVehicles.push({
+                mesh: carGroup,
+                axis: track.axis,
+                dir: track.dir,
+                speed: track.speed
+            });
+        }
+    });
+
+    const shirtColors = [0xff6b6b, 0x48dbfb, 0x1dd1a1, 0xfeca57, 0xff9ff3, 0x54a0ff];
+    const skinMat = new THREE.MeshStandardMaterial({ color: 0xffdbb5, roughness: 0.6 });
+    const pantsMat = new THREE.MeshStandardMaterial({ color: 0x2f3640, roughness: 0.7 });
+
+    for (let i = 0; i < 24; i++) {
+        const ped = new THREE.Group();
+        const shirtMat = new THREE.MeshStandardMaterial({
+            color: shirtColors[i % shirtColors.length],
+            roughness: 0.5
+        });
+
+        const head = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.38, 0.38), skinMat);
+        head.position.y = 1.55;
+        const body = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.62, 0.28), shirtMat);
+        body.position.y = 1.02;
+
+        const legL = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.65, 0.2), pantsMat);
+        legL.position.set(-0.12, 0.35, 0);
+        const legR = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.65, 0.2), pantsMat);
+        legR.position.set(0.12, 0.35, 0);
+
+        ped.add(head, body, legL, legR);
+
+        const angle = (i / 24) * Math.PI * 2;
+        const radius = 26 + (i % 3) * 11;
+        ped.position.set(Math.cos(angle) * radius, 0.15, Math.sin(angle) * radius);
+
+        cityGroup.add(ped);
+        walkingPedestrians.push({
+            group: ped,
+            legL,
+            legR,
+            baseAngle: angle,
+            radius,
+            speed: (i % 2 === 0 ? 1 : -1) * (0.08 + Math.random() * 0.05),
+            phase: Math.random() * 10
+        });
+    }
+}
+
+buildTokyoTower3D();
+buildCityInfrastructure();
+spawnCityTrafficAndPedestrians();
+
+// =========================================================
+// 5. 柯基傑洛 (Corgi Zero) 角色模型
+// =========================================================
+class CorgiZero3D {
+    constructor() {
+        this.root = new THREE.Group();
+        this.root.position.set(0, 0.3, 28);
+
+        this.velocity = new THREE.Vector3(0, 0, 0);
+        this.onGround = false;
+        this.isFlying = false;
+        this.jumpCount = 0;
+        this.maxJumps = 2;
+        this.dashTimer = 0;
+        this.dashCooldown = 0;
+        this.slashTimer = 0;
+        this.slashCombo = 0;
+        this.isDead = false;
+        this.facingAngle = Math.PI;
+        this.animTime = 0;
+
+        this.buildModel();
+        scene.add(this.root);
+    }
+
+    buildModel() {
+        const matRedArmor = new THREE.MeshStandardMaterial({ color: 0xd92424, roughness: 0.3, metalness: 0.45 });
+        const matWhiteArmor = new THREE.MeshStandardMaterial({ color: 0xf2f5fa, roughness: 0.3, metalness: 0.3 });
+        const matCorgiFur = new THREE.MeshStandardMaterial({ color: 0xc87533, roughness: 0.65, metalness: 0.05 });
+        const matDarkSuit = new THREE.MeshStandardMaterial({ color: 0x1e222b, roughness: 0.6, metalness: 0.3 });
+        const matGoldTrim = new THREE.MeshStandardMaterial({ color: 0xe6a822, roughness: 0.3, metalness: 0.7 });
+        const matGreenGem = new THREE.MeshStandardMaterial({
+            color: 0x11ff66, emissive: 0x00cc44, emissiveIntensity: 0.8, roughness: 0.1
+        });
+        const matBlueGem = new THREE.MeshStandardMaterial({
+            color: 0x22aaff, emissive: 0x0088ff, emissiveIntensity: 0.9, roughness: 0.1
+        });
+        const matHairWhite = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.45 });
+        const matSaberBlade = new THREE.MeshBasicMaterial({ color: 0x66ff99, transparent: true, opacity: 0.92 });
+        const matSaberCore = new THREE.MeshBasicMaterial({ color: 0xffffff });
+
+        this.bodyPivot = new THREE.Group();
+        this.bodyPivot.position.y = 1.05;
+        this.root.add(this.bodyPivot);
+
+        this.torso = new THREE.Group();
+        this.bodyPivot.add(this.torso);
+
+        const abdomen = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.55, 0.48), matDarkSuit);
+        abdomen.position.y = 0.05;
+        this.torso.add(abdomen);
+
+        const belt = new THREE.Mesh(new THREE.BoxGeometry(0.74, 0.22, 0.54), matWhiteArmor);
+        belt.position.y = -0.18;
+        const beltBuckle = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.14, 0.57), matGoldTrim);
+        beltBuckle.position.y = -0.18;
+        this.torso.add(belt, beltBuckle);
+
+        const chest = new THREE.Mesh(new THREE.BoxGeometry(0.84, 0.58, 0.58), matRedArmor);
+        chest.position.y = 0.38;
+        chest.castShadow = true;
+        const chestWhiteTrim = new THREE.Mesh(new THREE.BoxGeometry(0.86, 0.14, 0.6), matWhiteArmor);
+        chestWhiteTrim.position.set(0, 0.56, 0);
+        this.torso.add(chest, chestWhiteTrim);
+
+        const gemGeo = new THREE.SphereGeometry(0.11, 12, 12);
+        gemGeo.scale(1, 1, 0.45);
+        const leftChestGem = new THREE.Mesh(gemGeo, matGreenGem);
+        leftChestGem.position.set(-0.2, 0.4, 0.28);
+        const rightChestGem = new THREE.Mesh(gemGeo, matGreenGem);
+        rightChestGem.position.set(0.2, 0.4, 0.28);
+        const chestVent = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.18, 0.6), matGoldTrim);
+        chestVent.position.set(0, 0.22, 0);
+        this.torso.add(leftChestGem, rightChestGem, chestVent);
+
+        // 背部噴射飛行器
+        this.jetpackGroup = new THREE.Group();
+        this.jetpackGroup.position.set(0, 0.38, -0.36);
+        this.torso.add(this.jetpackGroup);
+
+        const jpCore = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.56, 0.28), matWhiteArmor);
+        const jpCenterGem = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.3, 12), matBlueGem);
+        jpCenterGem.rotation.x = Math.PI / 2;
+        jpCenterGem.position.set(0, 0.08, -0.04);
+        this.jetpackGroup.add(jpCore, jpCenterGem);
+
+        this.leftWingPivot = new THREE.Group();
+        this.leftWingPivot.position.set(-0.24, 0.12, -0.05);
+        this.rightWingPivot = new THREE.Group();
+        this.rightWingPivot.position.set(0.24, 0.12, -0.05);
+
+        for (let [side, wingPivot] of [[-1, this.leftWingPivot], [1, this.rightWingPivot]]) {
+            const mainWing = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.26, 0.08), matRedArmor);
+            mainWing.position.set(side * 0.42, 0.08, 0);
+            mainWing.rotation.z = side * 0.22;
+
+            const wingTip = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.1, 0.1), matWhiteArmor);
+            wingTip.position.set(side * 0.52, 0.2, 0);
+            wingTip.rotation.z = side * 0.28;
+
+            const energyBladeWing = new THREE.Mesh(
+                new THREE.BoxGeometry(0.75, 0.14, 0.04),
+                new THREE.MeshBasicMaterial({ color: 0x00eeff, transparent: true, opacity: 0.85 })
+            );
+            energyBladeWing.position.set(side * 0.48, -0.06, 0);
+            energyBladeWing.rotation.z = side * 0.18;
+
+            wingPivot.add(mainWing, wingTip, energyBladeWing);
+        }
+        this.jetpackGroup.add(this.leftWingPivot, this.rightWingPivot);
+
+        this.thrusterFlames = [];
+        for (let side of [-1, 1]) {
+            const pod = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.18, 0.62, 12), matDarkSuit);
+            pod.position.set(side * 0.28, -0.05, -0.14);
+            pod.rotation.z = -side * 0.12;
+
+            const nozzleRing = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.19, 0.14, 12), matGoldTrim);
+            nozzleRing.position.set(0, -0.32, 0);
+            pod.add(nozzleRing);
+
+            const flameGroup = new THREE.Group();
+            flameGroup.position.set(0, -0.38, 0);
+            const outerFlame = new THREE.Mesh(
+                new THREE.ConeGeometry(0.16, 1.35, 10),
+                new THREE.MeshBasicMaterial({ color: 0x00d8ff, transparent: true, opacity: 0.88 })
+            );
+            outerFlame.rotation.x = Math.PI;
+            outerFlame.position.y = -0.65;
+
+            const innerFlame = new THREE.Mesh(
+                new THREE.ConeGeometry(0.08, 0.85, 8),
+                new THREE.MeshBasicMaterial({ color: 0xffffff })
+            );
+            innerFlame.rotation.x = Math.PI;
+            innerFlame.position.y = -0.42;
+
+            flameGroup.add(outerFlame, innerFlame);
+            pod.add(flameGroup);
+            this.jetpackGroup.add(pod);
+            this.thrusterFlames.push(flameGroup);
+        }
+
+        // 頭部與狗耳
+        this.headGroup = new THREE.Group();
+        this.headGroup.position.set(0, 0.85, 0);
+        this.torso.add(this.headGroup);
+
+        const corgiHead = new THREE.Mesh(new THREE.BoxGeometry(0.76, 0.72, 0.74), matCorgiFur);
+        corgiHead.position.y = 0.28;
+        const snoutWhite = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.32, 0.46), matWhiteArmor);
+        snoutWhite.position.set(0, 0.17, 0.42);
+        const noseTip = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 10), matDarkSuit);
+        noseTip.position.set(0, 0.26, 0.66);
+        this.jawMesh = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.12, 0.38), matCorgiFur);
+        this.jawMesh.position.set(0, 0.04, 0.36);
+        this.headGroup.add(corgiHead, snoutWhite, noseTip, this.jawMesh);
+
+        const eyeGeo = new THREE.BoxGeometry(0.12, 0.09, 0.05);
+        const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const pupilMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
+        const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+        leftEye.position.set(-0.18, 0.34, 0.38);
+        const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
+        rightEye.position.set(0.18, 0.34, 0.38);
+        const leftPupil = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.07, 0.06), pupilMat);
+        leftPupil.position.set(-0.16, 0.34, 0.39);
+        const rightPupil = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.07, 0.06), pupilMat);
+        rightPupil.position.set(0.16, 0.34, 0.39);
+        this.headGroup.add(leftEye, rightEye, leftPupil, rightPupil);
+
+        const helmetTop = new THREE.Mesh(new THREE.BoxGeometry(0.86, 0.45, 0.82), matRedArmor);
+        helmetTop.position.set(0, 0.48, -0.02);
+        const helmetCrest = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.48, 0.86), matWhiteArmor);
+        helmetCrest.position.set(0, 0.5, 0.02);
+        const crystalGeo = new THREE.OctahedronGeometry(0.15, 0);
+        crystalGeo.scale(0.85, 1.1, 0.5);
+        const foreheadGem = new THREE.Mesh(crystalGeo, matBlueGem);
+        foreheadGem.position.set(0, 0.48, 0.45);
+        this.headGroup.add(helmetTop, helmetCrest, foreheadGem);
+
+        for (let side of [-1, 1]) {
+            const cheekGuard = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.52, 0.62), matRedArmor);
+            cheekGuard.position.set(side * 0.42, 0.26, 0.02);
+            const earCap = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.1, 12), matWhiteArmor);
+            earCap.rotation.z = Math.PI / 2;
+            earCap.position.set(side * 0.48, 0.28, -0.02);
+
+            const earGroup = new THREE.Group();
+            earGroup.position.set(side * 0.26, 0.68, -0.02);
+            earGroup.rotation.z = -side * 0.12;
+            const earOuter = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.48, 5), matCorgiFur);
+            earOuter.position.y = 0.22;
+            earGroup.add(earOuter);
+            this.headGroup.add(cheekGuard, earCap, earGroup);
+        }
+
+        this.hairGroup = new THREE.Group();
+        this.hairGroup.position.set(0, 0.2, -0.45);
+        this.headGroup.add(this.hairGroup);
+
+        this.hairSegments = [];
+        for (let i = 0; i < 5; i++) {
+            const seg = new THREE.Group();
+            const w = 0.55 + i * 0.12 - (i > 2 ? (i - 2) * 0.2 : 0);
+            const h = 0.38, d = 0.32;
+            const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), matHairWhite);
+            mesh.position.set(0, -h * 0.4, -d * 0.4);
+            const spikeL = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.45, 4), matHairWhite);
+            spikeL.rotation.x = -Math.PI * 0.75;
+            spikeL.position.set(-w * 0.42, -0.2, -0.2);
+            const spikeR = spikeL.clone();
+            spikeR.position.x = w * 0.42;
+            seg.add(mesh, spikeL, spikeR);
+
+            if (i === 0) {
+                this.hairGroup.add(seg);
+            } else {
+                seg.position.set(0, -0.24, -0.24);
+                this.hairSegments[i - 1].add(seg);
+            }
+            this.hairSegments.push(seg);
+        }
+
+        this.leftArmPivot = this.createArm(-1, matRedArmor, matWhiteArmor, matDarkSuit, matBlueGem, matSaberBlade, matSaberCore);
+        this.rightArmPivot = this.createArm(1, matRedArmor, matWhiteArmor, matDarkSuit, matBlueGem, matSaberBlade, matSaberCore);
+        this.torso.add(this.leftArmPivot.group, this.rightArmPivot.group);
+
+        this.leftLegPivot = this.createLeg(-1, matRedArmor, matWhiteArmor, matDarkSuit, matGreenGem);
+        this.rightLegPivot = this.createLeg(1, matRedArmor, matWhiteArmor, matDarkSuit, matGreenGem);
+        this.bodyPivot.add(this.leftLegPivot, this.rightLegPivot);
+
+        this.sparksGroup = new THREE.Group();
+        this.sparksGroup.visible = false;
+        const sparkMat = new THREE.MeshBasicMaterial({ color: 0x55ff99 });
+        for (let i = 0; i < 12; i++) {
+            const sp = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.32, 0.08), sparkMat);
+            sp.position.set((Math.random() - 0.5) * 1.2, 0.3 + Math.random() * 1.0, (Math.random() - 0.5) * 0.8);
+            this.sparksGroup.add(sp);
+        }
+        this.torso.add(this.sparksGroup);
+    }
+
+    createArm(side, matRed, matWhite, matDark, matBlue, matBlade, matCore) {
+        const group = new THREE.Group();
+        group.position.set(side * 0.58, 0.56, 0);
+
+        const shoulder = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.38, 0.48), matRed);
+        shoulder.position.set(side * 0.1, 0.06, 0);
+        const shoulderWhite = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.24, 0.34), matWhite);
+        shoulderWhite.position.set(side * 0.11, 0.05, 0.08);
+        const upperArm = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.36, 0.24), matDark);
+        upperArm.position.set(side * 0.12, -0.22, 0);
+        const forearm = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.38, 0.32), matRed);
+        forearm.position.set(side * 0.12, -0.52, 0);
+        const cuff = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.12, 0.35), matWhite);
+        cuff.position.set(side * 0.12, -0.66, 0);
+        const wristGem = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.1, 0.1), matBlue);
+        wristGem.position.set(side * 0.29, -0.66, 0);
+        const hand = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.24, 0.28), matWhite);
+        hand.position.set(side * 0.12, -0.82, 0.04);
+        group.add(shoulder, shoulderWhite, upperArm, forearm, cuff, wristGem, hand);
+
+        const saberPivot = new THREE.Group();
+        saberPivot.position.set(side * 0.12, -0.85, 0.15);
+        const hilt = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.45, 8), matWhite);
+        hilt.rotation.x = Math.PI / 2;
+        const guard = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.24, 0.08), new THREE.MeshStandardMaterial({ color: 0xe6a822 }));
+        guard.position.z = 0.2;
+        saberPivot.add(hilt, guard);
+
+        const bladeGroup = new THREE.Group();
+        bladeGroup.position.z = 0.22;
+        const bladeOuter = new THREE.Mesh(new THREE.ConeGeometry(0.13, 2.3, 8), matBlade);
+        bladeOuter.rotation.x = Math.PI / 2;
+        bladeOuter.position.z = 1.15;
+        const bladeInner = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 2.1, 8), matCore);
+        bladeInner.rotation.x = Math.PI / 2;
+        bladeInner.position.z = 1.05;
+
+        const crescentGeo = new THREE.RingGeometry(0.9, 2.55, 24, 1, -Math.PI * 0.4, Math.PI * 0.85);
+        const crescentMat = new THREE.MeshBasicMaterial({
+            color: 0x55ff88, side: THREE.DoubleSide, transparent: true, opacity: 0.0
+        });
+        const crescentMesh = new THREE.Mesh(crescentGeo, crescentMat);
+        crescentMesh.rotation.y = Math.PI / 2;
+        crescentMesh.position.set(0, 0, 1.1);
+
+        bladeGroup.add(bladeOuter, bladeInner, crescentMesh);
+        saberPivot.add(bladeGroup);
+        group.add(saberPivot);
+
+        return { group, saberPivot, bladeGroup, crescentMat };
+    }
+
+    createLeg(side, matRed, matWhite, matDark, matGreen) {
+        const legGroup = new THREE.Group();
+        legGroup.position.set(side * 0.25, -0.25, 0);
+
+        const thigh = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.42, 0.3), matDark);
+        thigh.position.y = -0.18;
+        const knee = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.22, 0.44), matWhite);
+        knee.position.set(0, -0.38, 0.04);
+        const shin = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.46, 0.46), matRed);
+        shin.position.set(0, -0.62, 0);
+        const ankleGem = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.45, 10), matGreen);
+        ankleGem.rotation.z = Math.PI / 2;
+        ankleGem.position.set(0, -0.65, 0);
+        const foot = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.22, 0.62), matWhite);
+        foot.position.set(0, -0.82, 0.1);
+
+        legGroup.add(thigh, knee, shin, ankleGem, foot);
+        return legGroup;
+    }
+
+    spawnJetTrailParticle() {
+        const pGeo = new THREE.SphereGeometry(0.22, 6, 6);
+        const pMat = new THREE.MeshBasicMaterial({
+            color: this.dashTimer > 0 ? 0x55ffaa : 0x00d8ff,
+            transparent: true,
+            opacity: 0.7
+        });
+        const pMesh = new THREE.Mesh(pGeo, pMat);
+        pMesh.position.copy(this.root.position).add(new THREE.Vector3((Math.random() - 0.5) * 0.5, 1.1, (Math.random() - 0.5) * 0.5));
+        scene.add(pMesh);
+
+        const timer = setInterval(() => {
+            pMesh.scale.multiplyScalar(0.88);
+            pMat.opacity -= 0.09;
+            if (pMat.opacity <= 0) {
+                clearInterval(timer);
+                scene.remove(pMesh);
+                pGeo.dispose();
+                pMat.dispose();
+            }
+        }, 30);
+    }
+
+    toggleFlightMode() {
+        if (this.isDead) return;
+        this.isFlying = !this.isFlying;
+        if (this.isFlying && this.onGround) {
+            this.root.position.y += 0.8;
+            this.velocity.y = 4.0;
+            this.onGround = false;
+        }
+        const flyBtn = document.getElementById('btn-fly-mode');
+        const jpLabel = document.getElementById('jetpack-label');
+        flyBtn.classList.toggle('active', this.isFlying);
+        flyBtn.textContent = this.isFlying ? "🚀 飛行器模式：開啟中 (F)" : "🚀 飛行器模式：關閉 (F)";
+        jpLabel.textContent = this.isFlying ? "噴射飛行中" : "地面模式";
+        
+        const touchFlyBtn = document.getElementById('touch-fly-toggle');
+        if (touchFlyBtn) {
+            touchFlyBtn.classList.toggle('pressed', this.isFlying);
+        }
+    }
+
+    update(dt, input, cameraAzimuth) {
+        this.animTime += dt;
+        const stateLabel = document.getElementById('state-label');
+
+        if (this.isDead) {
+            stateLabel.textContent = "戰損倒地";
+            this.bodyPivot.position.y = 0.55;
+            this.torso.rotation.x = -0.55;
+            this.headGroup.rotation.x = -0.75;
+            this.jawMesh.position.y = -0.05;
+            this.leftLegPivot.rotation.set(-1.1, 0, 0.35);
+            this.rightLegPivot.rotation.set(0.65, 0, -0.35);
+            this.leftArmPivot.group.rotation.set(-0.4, 0, -0.7);
+            this.rightArmPivot.group.rotation.set(0.3, 0, 0.6);
+            this.leftArmPivot.bladeGroup.scale.setScalar(0.01);
+            this.rightArmPivot.bladeGroup.scale.setScalar(0.01);
+            this.thrusterFlames.forEach(f => f.visible = false);
+            this.sparksGroup.visible = true;
+            this.sparksGroup.children.forEach((sp, idx) => {
+                sp.rotation.z = Math.sin(this.animTime * 25 + idx) * 1.5;
+                sp.visible = Math.random() > 0.35;
+            });
+            return;
+        }
+
+        this.sparksGroup.visible = false;
+        this.jawMesh.position.y = 0.04;
+        this.headGroup.rotation.x = 0;
+        this.leftLegPivot.rotation.z = 0;
+        this.rightLegPivot.rotation.z = 0;
+        this.rightArmPivot.bladeGroup.scale.set(1, 1, 1);
+        const showLeftSaber = (this.slashTimer > 0 && this.slashCombo === 2) || !this.onGround || this.isFlying;
+        this.leftArmPivot.bladeGroup.scale.setScalar(showLeftSaber ? 1 : 0.75);
+
+        const wingTargetScale = (this.isFlying || this.dashTimer > 0) ? 1.0 : 0.35;
+        this.leftWingPivot.scale.x = THREE.MathUtils.lerp(this.leftWingPivot.scale.x, wingTargetScale, 0.15);
+        this.rightWingPivot.scale.x = THREE.MathUtils.lerp(this.rightWingPivot.scale.x, wingTargetScale, 0.15);
+
+        const flameActive = this.isFlying || this.dashTimer > 0 || (!this.onGround && this.jumpCount > 1);
+        this.thrusterFlames.forEach(f => {
+            f.visible = flameActive;
+            if (flameActive) {
+                const boostScale = this.dashTimer > 0 ? 1.85 : (input.up ? 1.45 : 1.0);
+                f.scale.set(1, boostScale * (0.85 + Math.random() * 0.35), 1);
+            }
+        });
+        if (flameActive && Math.random() < 0.65) {
+            this.spawnJetTrailParticle();
+        }
+
+        const moveDir = new THREE.Vector3();
+        if (input.forward) moveDir.z -= 1;
+        if (input.backward) moveDir.z += 1;
+        if (input.left) moveDir.x -= 1;
+        if (input.right) moveDir.x += 1;
+
+        if (this.dashCooldown > 0) this.dashCooldown -= dt;
+        if (this.dashTimer > 0) this.dashTimer -= dt;
+
+        const baseSpeed = this.isFlying ? 20.0 : 13.0;
+        const currentSpeed = this.dashTimer > 0 ? 36.0 : baseSpeed;
+
+        if (moveDir.lengthSq() > 0) {
+            moveDir.normalize();
+            moveDir.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraAzimuth);
+            this.velocity.x = moveDir.x * currentSpeed;
+            this.velocity.z = moveDir.z * currentSpeed;
+            this.facingAngle = Math.atan2(moveDir.x, moveDir.z);
+        } else if (this.dashTimer > 0) {
+            this.velocity.x = Math.sin(this.facingAngle) * currentSpeed;
+            this.velocity.z = Math.cos(this.facingAngle) * currentSpeed;
+        } else {
+            this.velocity.x *= 0.82;
+            this.velocity.z *= 0.82;
+        }
+
+        this.root.rotation.y = this.facingAngle;
+
+        if (this.isFlying) {
+            const verticalSpeed = this.dashTimer > 0 ? 26.0 : 16.5;
+            if (input.up) {
+                this.velocity.y = verticalSpeed;
+            } else if (input.down) {
+                this.velocity.y = -verticalSpeed;
+            } else {
+                this.velocity.y = Math.sin(this.animTime * 4.0) * 0.6;
+            }
+        } else {
+            const gravity = -35.0;
+            this.velocity.y += gravity * dt;
+        }
+
+        const prevBottomY = this.root.position.y;
+        this.root.position.x += this.velocity.x * dt;
+        this.root.position.y += this.velocity.y * dt;
+        this.root.position.z += this.velocity.z * dt;
+
+        this.onGround = false;
+        const playerRadius = 0.55;
+        for (let plat of collidablePlatforms) {
+            const withinX = (this.root.position.x + playerRadius > plat.minX) && (this.root.position.x - playerRadius < plat.maxX);
+            const withinZ = (this.root.position.z + playerRadius > plat.minZ) && (this.root.position.z - playerRadius < plat.maxZ);
+
+            if (withinX && withinZ) {
+                if (this.velocity.y <= 0 && prevBottomY >= plat.topY - 0.45 && this.root.position.y <= plat.topY) {
+                    this.root.position.y = plat.topY;
+                    this.velocity.y = 0;
+                    if (!this.isFlying) {
+                        this.onGround = true;
+                        this.jumpCount = 0;
+                    }
+                }
+            }
+        }
+
+        if (this.root.position.y < 0.16) {
+            this.root.position.y = 0.16;
+            this.velocity.y = 0;
+            if (!this.isFlying) {
+                this.onGround = true;
+                this.jumpCount = 0;
+            }
+        }
+
+        if (this.slashTimer > 0) {
+            this.slashTimer -= dt;
+            const progress = 1 - (this.slashTimer / 0.32);
+            if (this.slashCombo === 1) {
+                stateLabel.textContent = "弧光斬！";
+                this.torso.rotation.y = Math.sin(progress * Math.PI) * 0.65;
+                this.rightArmPivot.group.rotation.set(-1.3 + progress * 1.6, -0.4, 0.3);
+                this.leftArmPivot.group.rotation.set(-0.8, 0.3, -0.2);
+                this.rightArmPivot.crescentMat.opacity = Math.sin(progress * Math.PI) * 0.85;
+                this.leftArmPivot.crescentMat.opacity = 0;
+            } else {
+                stateLabel.textContent = "雙刀滿月斬！";
+                this.torso.rotation.x = 0.38;
+                this.torso.rotation.y = -0.6 + progress * 1.4;
+                this.rightArmPivot.group.rotation.set(-1.4, -0.8 + progress * 1.8, 0.5);
+                this.leftArmPivot.group.rotation.set(0.7, 0.5, -0.6);
+                this.rightArmPivot.crescentMat.opacity = Math.sin(progress * Math.PI) * 0.95;
+                this.leftArmPivot.crescentMat.opacity = Math.sin(progress * Math.PI) * 0.65;
+            }
+        } else {
+            this.torso.rotation.y = 0;
+            this.rightArmPivot.crescentMat.opacity = 0;
+            this.leftArmPivot.crescentMat.opacity = 0;
+
+            if (this.isFlying) {
+                const isMovingHoriz = moveDir.lengthSq() > 0.01 || this.dashTimer > 0;
+                stateLabel.textContent = isMovingHoriz ? "高速巡航" : "懸浮待機";
+                this.torso.rotation.x = isMovingHoriz ? 0.55 : 0.15;
+                this.headGroup.rotation.x = isMovingHoriz ? -0.35 : 0;
+                this.leftLegPivot.rotation.x = isMovingHoriz ? 0.45 : 0.25;
+                this.rightLegPivot.rotation.x = isMovingHoriz ? 0.65 : -0.15;
+                this.rightArmPivot.group.rotation.set(0.45, -0.15, 0.25);
+                this.leftArmPivot.group.rotation.set(0.45, 0.15, -0.25);
+            } else if (!this.onGround) {
+                stateLabel.textContent = this.jumpCount > 1 ? "二段跳" : "跳躍滯空";
+                this.torso.rotation.x = 0.1;
+                this.rightArmPivot.group.rotation.set(-2.2, -0.3, 0.2);
+                this.leftArmPivot.group.rotation.set(-1.8, 0.4, -0.2);
+                this.leftLegPivot.rotation.x = -0.55;
+                this.rightLegPivot.rotation.x = 0.45;
+            } else if (this.dashTimer > 0) {
+                stateLabel.textContent = "噴射衝刺";
+                this.torso.rotation.x = 0.42;
+                this.rightArmPivot.group.rotation.set(0.6, 0, 0.25);
+                this.leftArmPivot.group.rotation.set(0.6, 0, -0.25);
+                this.leftLegPivot.rotation.x = -0.7;
+                this.rightLegPivot.rotation.x = 0.6;
+            } else if (moveDir.lengthSq() > 0.01) {
+                stateLabel.textContent = "奔跑中";
+                this.torso.rotation.x = 0.12;
+                const runCycle = this.animTime * 14;
+                this.bodyPivot.position.y = 1.05 + Math.abs(Math.sin(runCycle)) * 0.12;
+                this.leftLegPivot.rotation.x = Math.sin(runCycle) * 0.75;
+                this.rightLegPivot.rotation.x = -Math.sin(runCycle) * 0.75;
+                this.leftArmPivot.group.rotation.set(-Math.sin(runCycle) * 0.55, 0, -0.15);
+                this.rightArmPivot.group.rotation.set(Math.sin(runCycle) * 0.55, 0, 0.15);
+            } else {
+                stateLabel.textContent = "待機";
+                this.torso.rotation.x = 0;
+                const idleWave = Math.sin(this.animTime * 3.5);
+                this.bodyPivot.position.y = 1.05 + idleWave * 0.04;
+                this.leftLegPivot.rotation.x = 0.12;
+                this.rightLegPivot.rotation.x = -0.12;
+                this.rightArmPivot.group.rotation.set(-0.35 + idleWave * 0.06, -0.2, 0.18);
+                this.leftArmPivot.group.rotation.set(-0.2 - idleWave * 0.06, 0.2, -0.18);
+            }
+        }
+
+        const speedFactor = Math.min(1.6, Math.hypot(this.velocity.x, this.velocity.z, this.velocity.y) / 12);
+        this.hairSegments.forEach((seg, idx) => {
+            seg.rotation.x = 0.2 * speedFactor + Math.sin(this.animTime * 8 - idx * 0.7) * (0.08 + speedFactor * 0.09);
+            seg.rotation.y = Math.cos(this.animTime * 5 - idx * 0.5) * 0.08;
+        });
+    }
+
+    jump() {
+        if (this.isDead || this.isFlying) return;
+        if (this.onGround || this.jumpCount < this.maxJumps) {
+            this.velocity.y = this.jumpCount === 0 ? 16.8 : 15.5;
+            this.onGround = false;
+            this.jumpCount++;
+        }
+    }
+
+    dash() {
+        if (this.isDead || this.dashCooldown > 0) return;
+        this.dashTimer = 0.30;
+        this.dashCooldown = 0.42;
+    }
+
+    slash() {
+        if (this.isDead) return;
+        this.slashCombo = (this.slashCombo % 2) + 1;
+        this.slashTimer = 0.32;
+    }
+
+    toggleDead() {
+        this.isDead = !this.isDead;
+        if (this.isDead) this.velocity.set(0, 0, 0);
+    }
+}
+
+const player = new CorgiZero3D();
+
+// =========================================================
+// 6. 控制綁定 (電腦鍵盤 + 手機虛擬觸控)
+// =========================================================
+const inputState = {
+    forward: false,
+    backward: false,
+    left: false,
+    right: false,
+    up: false,
+    down: false
+};
+
+let cameraFollowPlayer = true;
+let isWireframeMode = false;
+let isNightMode = true;
+
+// 鍵盤監聽
+window.addEventListener('keydown', (e) => {
+    if (e.repeat && (e.code === 'KeyF' || e.code === 'KeyJ' || e.code === 'KeyZ' || e.code === 'KeyK' || e.code === 'KeyX')) return;
+    switch (e.code) {
+        case 'KeyW':
+        case 'ArrowUp': inputState.forward = true; break;
+        case 'KeyS':
+        case 'ArrowDown': inputState.backward = true; break;
+        case 'KeyA':
+        case 'ArrowLeft': inputState.left = true; break;
+        case 'KeyD':
+        case 'ArrowRight': inputState.right = true; break;
+        case 'Space':
+            e.preventDefault();
+            inputState.up = true;
+            if (!e.repeat) player.jump();
+            break;
+        case 'KeyC':
+        case 'ControlLeft':
+        case 'ControlRight': inputState.down = true; break;
+        case 'KeyF': player.toggleFlightMode(); break;
+        case 'ShiftLeft':
+        case 'ShiftRight': player.dash(); break;
+        case 'KeyJ':
+        case 'KeyZ': player.slash(); break;
+        case 'KeyK':
+        case 'KeyX': player.toggleDead(); break;
+    }
+});
+
+window.addEventListener('keyup', (e) => {
+    switch (e.code) {
+        case 'KeyW':
+        case 'ArrowUp': inputState.forward = false; break;
+        case 'KeyS':
+        case 'ArrowDown': inputState.backward = false; break;
+        case 'KeyA':
+        case 'ArrowLeft': inputState.left = false; break;
+        case 'KeyD':
+        case 'ArrowRight': inputState.right = false; break;
+        case 'Space': inputState.up = false; break;
+        case 'KeyC':
+        case 'ControlLeft':
+        case 'ControlRight': inputState.down = false; break;
+    }
+});
+
+// 手機選單收合切換
+const toggleBtn = document.getElementById('toggle-panel-btn');
+const uiPanel = document.getElementById('ui-panel');
+toggleBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    uiPanel.classList.toggle('show');
+});
+
+// 虛擬觸控按鈕綁定 (防止觸控冒泡影響視角旋轉)
+function setupTouchButton(elId, onDown, onUp) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    const startHandler = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        el.classList.add('pressed');
+        if (onDown) onDown();
+    };
+    const endHandler = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        el.classList.remove('pressed');
+        if (onUp) onUp();
+    };
+    el.addEventListener('touchstart', startHandler, { passive: false });
+    el.addEventListener('touchend', endHandler, { passive: false });
+    el.addEventListener('mousedown', startHandler);
+    el.addEventListener('mouseup', endHandler);
+}
+
+// 虛擬方向鍵綁定
+setupTouchButton('btn-dpad-up',    () => { inputState.forward = true; },  () => { inputState.forward = false; });
+setupTouchButton('btn-dpad-down',  () => { inputState.backward = true; }, () => { inputState.backward = false; });
+setupTouchButton('btn-dpad-left',  () => { inputState.left = true; },     () => { inputState.left = false; });
+setupTouchButton('btn-dpad-right', () => { inputState.right = true; },    () => { inputState.right = false; });
+
+// 動作按鈕綁定
+setupTouchButton('touch-jump', () => {
+    inputState.up = true;
+    player.jump();
+}, () => {
+    inputState.up = false;
+});
+
+setupTouchButton('touch-descend', () => {
+    inputState.down = true;
+}, () => {
+    inputState.down = false;
+});
+
+setupTouchButton('touch-dash', () => {
+    player.dash();
+});
+
+setupTouchButton('touch-slash', () => {
+    player.slash();
+});
+
+setupTouchButton('touch-fly-toggle', () => {
+    player.toggleFlightMode();
+});
+
+document.getElementById('btn-fly-mode').addEventListener('click', () => {
+    player.toggleFlightMode();
+});
+
+document.getElementById('btn-follow').addEventListener('click', function() {
+    cameraFollowPlayer = !cameraFollowPlayer;
+    this.classList.toggle('active', cameraFollowPlayer);
+    document.getElementById('cam-label').textContent = cameraFollowPlayer ? "跟隨" : "自由";
+});
+
+document.getElementById('btn-wireframe').addEventListener('click', function() {
+    isWireframeMode = !isWireframeMode;
+    this.classList.toggle('active', isWireframeMode);
+    towerTrussMaterials.forEach(mat => mat.wireframe = isWireframeMode);
+});
+
+document.getElementById('btn-daynight').addEventListener('click', function() {
+    isNightMode = !isNightMode;
+    this.classList.toggle('active', !isNightMode);
+    if (isNightMode) {
+        scene.background.setHex(0x060a14);
+        scene.fog.color.setHex(0x060a14);
+        ambientLight.intensity = 0.65;
+        towerLight1.intensity = 1.4;
+        towerLight2.intensity = 1.2;
+        streetLampLights.forEach(m => m.color.setHex(0xffe6aa));
+    } else {
+        scene.background.setHex(0x7ec0ee);
+        scene.fog.color.setHex(0x7ec0ee);
+        ambientLight.intensity = 1.15;
+        towerLight1.intensity = 0.2;
+        towerLight2.intensity = 0.2;
+        streetLampLights.forEach(m => m.color.setHex(0x778899));
+    }
+});
+
+window.teleportPlayer = function(place) {
+    player.isDead = false;
+    player.velocity.set(0, 0, 0);
+    if (place === 'street') {
+        player.root.position.set(-48, 0.3, 34);
+    } else if (place === 'park') {
+        player.root.position.set(82, 0.4, 0);
+    } else if (place === 'mainDeck') {
+        player.root.position.set(0, 39.5, 5.8);
+    } else if (place === 'topSpire') {
+        player.root.position.set(0, 105.5, 0);
+    }
+    controls.target.copy(player.root.position).add(new THREE.Vector3(0, 1.5, 0));
+    uiPanel.classList.remove('show');
+};
+
+// =========================================================
+// 7. 城市動態更新
+// =========================================================
+let cityTime = 0;
+
+function updateCityLife(dt) {
+    cityTime += dt;
+    const cycle = cityTime % 14.0;
+    const nsGreen = cycle < 5.5;
+    const nsYellow = cycle >= 5.5 && cycle < 7.0;
+    const ewGreen = cycle >= 7.0 && cycle < 12.5;
+    const ewYellow = cycle >= 12.5;
+
+    trafficLightControllers.forEach(ctrl => {
+        if (ctrl.isNS) {
+            ctrl.greenMat.color.setHex(nsGreen ? 0x00ff66 : 0x002211);
+            ctrl.yellowMat.color.setHex(nsYellow ? 0xffcc00 : 0x221a00);
+            ctrl.redMat.color.setHex((!nsGreen && !nsYellow) ? 0xff2222 : 0x220000);
+        } else {
+            ctrl.greenMat.color.setHex(ewGreen ? 0x00ff66 : 0x002211);
+            ctrl.yellowMat.color.setHex(ewYellow ? 0xffcc00 : 0x221a00);
+            ctrl.redMat.color.setHex((!ewGreen && !ewYellow) ? 0xff2222 : 0x220000);
+        }
+    });
+
+    const sigInfo = document.getElementById('traffic-signal-info');
+    if (sigInfo) {
+        if (nsGreen) sigInfo.textContent = "號誌：南北🟢 / 東西🔴";
+        else if (nsYellow) sigInfo.textContent = "號誌：南北🟡 / 東西🔴";
+        else if (ewGreen) sigInfo.textContent = "號誌：南北🔴 / 東西🟢";
+        else sigInfo.textContent = "號誌：南北🔴 / 東西🟡";
+    }
+
+    movingVehicles.forEach(v => {
+        const isEW = (v.axis === 'x');
+        const canGo = isEW ? ewGreen : nsGreen;
+        const pos = isEW ? v.mesh.position.x : v.mesh.position.z;
+
+        let stopForRed = false;
+        if (!canGo) {
+            for (let inter of [-48, 48]) {
+                const stopLine = inter - v.dir * 13.5;
+                const dist = (stopLine - pos) * v.dir;
+                if (dist > 0 && dist < 8.5) {
+                    stopForRed = true;
+                    break;
+                }
+            }
+        }
+
+        if (!stopForRed) {
+            if (isEW) {
+                v.mesh.position.x += v.dir * v.speed * dt;
+                if (v.dir > 0 && v.mesh.position.x > 220) v.mesh.position.x = -220;
+                if (v.dir < 0 && v.mesh.position.x < -220) v.mesh.position.x = 220;
+            } else {
+                v.mesh.position.z += v.dir * v.speed * dt;
+                if (v.dir > 0 && v.mesh.position.z > 220) v.mesh.position.z = -220;
+                if (v.dir < 0 && v.mesh.position.z < -220) v.mesh.position.z = 220;
+            }
+        }
+    });
+
+    walkingPedestrians.forEach(p => {
+        p.baseAngle += p.speed * dt;
+        const nx = Math.cos(p.baseAngle) * p.radius;
+        const nz = Math.sin(p.baseAngle) * p.radius;
+        const dx = nx - p.group.position.x;
+        const dz = nz - p.group.position.z;
+        p.group.position.set(nx, 0.15, nz);
+        p.group.rotation.y = Math.atan2(dx, dz);
+
+        const swing = Math.sin(cityTime * 8 + p.phase) * 0.55;
+        p.legL.rotation.x = swing;
+        p.legR.rotation.x = -swing;
+    });
+
+    if (fountainParticles) {
+        const posArr = fountainParticles.mesh.geometry.attributes.position.array;
+        for (let i = 0; i < posArr.length; i += 3) {
+            posArr[i + 1] += dt * 4.5;
+            const h = posArr[i + 1] - 1.0;
+            const spread = h * 0.45;
+            const ang = i * 1.7 + cityTime * 2;
+            posArr[i] = fountainParticles.cx + Math.cos(ang) * spread;
+            posArr[i + 2] = fountainParticles.cz + Math.sin(ang) * spread;
+            if (posArr[i + 1] > 5.2) {
+                posArr[i + 1] = 1.0;
+            }
+        }
+        fountainParticles.mesh.geometry.attributes.position.needsUpdate = true;
+    }
+}
+
+// =========================================================
+// 8. 主迴圈與 HUD
+// =========================================================
+const clock = new THREE.Clock();
+const prevPlayerPos = new THREE.Vector3().copy(player.root.position);
+
+function updateHUD() {
+    const pos = player.root.position;
+    const realMeters = Math.max(0, (pos.y / 105) * 333).toFixed(1);
+    document.getElementById('altitude-text').textContent = `${realMeters} m`;
+
+    const zoneEl = document.getElementById('zone-text');
+    const distFromCenter = Math.hypot(pos.x, pos.z);
+
+    if (pos.y > 77 && distFromCenter < 15) {
+        zoneEl.textContent = "333m 鐵塔塔尖";
+    } else if (pos.y > 70 && distFromCenter < 15) {
+        zoneEl.textContent = "250m 特別展望台";
+    } else if (pos.y > 34 && pos.y < 43 && distFromCenter < 18) {
+        zoneEl.textContent = "150m 主展望台";
+    } else if (pos.y > 12 && distFromCenter < 22) {
+        zoneEl.textContent = "鐵塔空間桁架";
+    } else if (pos.y > 18) {
+        zoneEl.textContent = "高空飛行空域";
+    } else if (pos.x > 58 || pos.z > 58) {
+        zoneEl.textContent = "芝公園與增上寺";
+    } else if (Math.abs(Math.abs(pos.x) - 48) < 12 || Math.abs(Math.abs(pos.z) - 48) < 12) {
+        zoneEl.textContent = "港區環狀十字路口";
+    } else {
+        zoneEl.textContent = "東京鐵塔廣場";
+    }
+}
+
+function animate() {
+    requestAnimationFrame(animate);
+    const dt = Math.min(clock.getDelta(), 0.05);
+
+    const camOffset = new THREE.Vector3().subVectors(camera.position, controls.target);
+    const cameraAzimuth = Math.atan2(camOffset.x, camOffset.z);
+
+    prevPlayerPos.copy(player.root.position);
+    player.update(dt, inputState, cameraAzimuth);
+    updateCityLife(dt);
+
+    if (cameraFollowPlayer) {
+        const deltaMove = new THREE.Vector3().subVectors(player.root.position, prevPlayerPos);
+        camera.position.add(deltaMove);
+        const targetFocus = new THREE.Vector3(
+            player.root.position.x,
+            player.root.position.y + 1.4,
+            player.root.position.z
+        );
+        controls.target.lerp(targetFocus, 0.18);
+    }
+
+    controls.update();
+    updateHUD();
+    renderer.render(scene, camera);
+}
+
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+animate();
+</script>
+</body>
+</html>
